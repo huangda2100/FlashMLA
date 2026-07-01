@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import pybind11; print\\(pybind11.__version__\\); print\\(pybind11.get_include\\(\\)\\)\")",
+      "Bash(python3 *)"
+    ]
+  }
+}
