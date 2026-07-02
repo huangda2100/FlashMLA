@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(python3 -c \"import pybind11; print\\(pybind11.__version__\\); print\\(pybind11.get_include\\(\\)\\)\")",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(awk {for\\(i=1;i<=length\\($0\\);i++\\){c=substr\\($0,i,1\\);if\\(c==\"{\"\\)o++;if\\(c==\"}\"\\)cl++}}END{print \"open=\"o\" close=\"cl} *)",
+      "Bash(awk {for\\(i=1;i<=length\\($0\\);i++\\){c=substr\\($0,i,1\\);if\\(c==\"\\(\"\\)o++;if\\(c==\"\\)\"\\)cl++}}END{print \"open=\"o\" close=\"cl} *)",
+      "Bash(awk NR>=230 && NR<=1200 {for\\(i=1;i<=length\\($0\\);i++\\){c=substr\\($0,i,1\\);if\\(c==\"\\(\"\\)o++;if\\(c==\"\\)\"\\)cl++}}END{print \"open=\"o\" close=\"cl} *)",
+      "Bash(awk '{for\\(i=1;i<=length\\($0\\);i++\\){c=substr\\($0,i,1\\);if\\(c==\"\\(\"\\)o++;if\\(c==\"\\)\"\\)cl++}}END{print \"open=\"o\" close=\"cl}')",
+      "Bash(grep -n \"//.*[^:]\\($\" /Users/2633980/github/FlashMLA/csrc/sm90/decode/sparse_fp8/splitkv_mla.cuh)",
+      "Bash(awk *)"
     ]
   }
 }

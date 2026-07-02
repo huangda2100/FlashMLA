@@ -128,17 +128,28 @@ compute-bound; otherwise, it's memory-bound.
 
 > **翻译：** NVIDIA H800 SXM5 GPU 的峰值显存带宽为 3.35 TB/s，峰值算力为 990 TFlops。但由于降频（在实际运行中降到了约 1600 MHz），实际峰值算力约为 865 TFlops。因此，当 $h_q s_q \ge \frac{1}{2} \cdot \frac{865}{3.35} = 128$ 时，内核是计算密集型的；否则是访存密集型的。
 
-**[讲解] "Roof line" 分析**
+**[讲解] Roof line 分析与临界值**
 
-这里在做一个经典的 roof-line 分析：
+这里在做经典的 roof-line 分析，关键是区分三个量：
 
-- GPU 的内存带宽：3.35 TB/s → 每纳秒可以搬 3350 字节
-- GPU 的计算能力：865 TFlops → 每纳秒可以做 865 万亿次浮点运算
-- **平衡点：** 865 / 3.35 ≈ 258 FLOPs/byte。通俗说：每搬 1 个字节到 GPU，GPU 需要做 258 次浮点运算才能刚好用完算力。
+- **GPU 算力**：865 TFlops（降频后）
+- **GPU 带宽**：3.35 TB/s
+- **GPU 平衡点**：865 / 3.35 ≈ 258 FLOPs/byte。即每搬 1 字节，GPU 要做 258 次浮点运算才能用满算力。
+- **实际门槛**：注意力不是纯矩阵乘（含 softmax），经验上加 1/2 因子，门槛 ≈ 129 FLOPs/byte。
 
-但如果只是简单的注意力计算，还要考虑中间的 softmax（不是纯矩阵乘），所以有个 1/2 的经验因子。平衡点是 129。
+而 MLA 解码的**计算-访存比** = $2 h_q s_q$ FLOPs/byte（前面推导的结论）。
 
-当 $h_q s_q = 128 \ge 129$ 时，计算量访存量比 256 超过 GPU 容量，所以是计算密集型。
+**判断规则**：计算-访存比 ≥ GPU 门槛 → compute-bound；否则 memory-bound。
+
+代入 DeepSeek V3 解码配置 $h_q = 128, s_q = 1$：
+
+- 计算-访存比 = $2 \times 128 \times 1 = 256$ FLOPs/byte
+- GPU 门槛 = 129 FLOPs/byte
+- 256 ≥ 129 → **compute-bound**
+
+换句话说：$h_q s_q \ge 128$（即 $2 h_q s_q \ge 256 \ge 129$）时，MLA 解码就是 compute-bound。DeepSeek V3 的 $h_q s_q = 128$ 恰好踩在临界点上，**计算密度刚好压过门槛**，所以是 compute-bound。
+
+**为什么这个判断重要？** 它反直觉——解码阶段通常被认为是 memory-bound（Q 只有 1 个 token，瓶颈在搬 KV Cache）。但 MLA 因为 $h_q = 128$ 个 head 同时算，Q 侧的算力需求被放大 128 倍，把计算-访存比顶过了 roof-line 门槛。这个判断决定了后续所有优化方向：优化 compute-bound kernel 要让 Tensor Core 满载，而不是省访存。
 
 **原文：**
 
